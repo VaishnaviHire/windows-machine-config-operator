@@ -193,9 +193,8 @@ func (nc *nodeConfig) applyWorkerLabel() error {
 	return nil
 }
 
-//SetNode  identifies the node from the given instanceID  provided and sets the node object.
+// SetNode identifies the node from the instanceID provided and sets the node object in the nodeconfig.
 func (nc *nodeConfig) setNode() error {
-	var instanceID string
 	err := wait.Poll(retry.Interval, retry.Timeout, func() (bool, error) {
 		nodes, err := nc.k8sclientset.CoreV1().Nodes().List(context.TODO(),
 			metav1.ListOptions{LabelSelector: WindowsOSLabel})
@@ -206,16 +205,15 @@ func (nc *nodeConfig) setNode() error {
 			return false, errors.Errorf("no nodes found")
 		}
 		// get the node with given instance id
-		instanceID = nc.ID()
 		for _, node := range nodes.Items {
-			if instanceID == getInstanceIDfromProviderID(node.Spec.ProviderID) {
+			if nc.ID() == getInstanceIDfromProviderID(node.Spec.ProviderID) {
 				nc.node = &node
 				return true, nil
 			}
 		}
 		return false, nil
 	})
-	return errors.Wrapf(err, "unable to find node for instanceID %s", instanceID)
+	return errors.Wrapf(err, "unable to find node for instanceID %s", nc.ID())
 }
 
 // waitForNodeAnnotation checks if the node object has the given annotation and waits for retry.Interval seconds and

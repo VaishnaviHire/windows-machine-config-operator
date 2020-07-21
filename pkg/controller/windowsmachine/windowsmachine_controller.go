@@ -10,9 +10,9 @@ import (
 	"github.com/openshift/windows-machine-config-operator/pkg/controller/windowsmachine/nodeconfig"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
-	corev1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeTypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -30,14 +30,14 @@ import (
 )
 
 const (
-	// ControllerName is the name of the WindowsMachineConfig controller
+	// ControllerName is the name of the WindowsMachine controller
 	ControllerName = "windowsmachine-controller"
 )
 
 var log = logf.Log.WithName(ControllerName)
 
 // Add creates a new WindowsMachineConfig Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
+// and start it when the Manager is Started.
 func Add(mgr manager.Manager, clusterServiceCIDR string) error {
 	reconciler, err := newReconciler(mgr, clusterServiceCIDR)
 	if err != nil {
@@ -48,8 +48,6 @@ func Add(mgr manager.Manager, clusterServiceCIDR string) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, clusterServiceCIDR string) (reconcile.Reconciler, error) {
-	// TODO: This should be moved out to validation for reconciler struct.
-	// 		Jira story: https://issues.redhat.com/browse/WINC-277
 	// The default client serves read requests from the cache which
 	// could be stale and result in a get call to return an older version
 	// of the object. Hence we are using a non-default-client referenced
@@ -91,7 +89,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not create %s", ControllerName)
 	}
-	// Watch for the Machine objects
+	// Watch for the Machine objects with label defined by windowsOSLabel
 	windowsOSLabel := "machine.openshift.io/os-id"
 	predicateFilter := predicate.Funcs{
 		// ignore create event for all Machines as WMCO should for Machine getting provisioned
@@ -114,7 +112,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	err = c.Watch(&source.Kind{Type: &mapi.Machine{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "openshift-machine-api"},
+		ObjectMeta: meta.ObjectMeta{Namespace: "openshift-machine-api"},
 	}}, &handler.EnqueueRequestForObject{}, predicateFilter)
 	if err != nil {
 		return errors.Wrap(err, "could not create watch on Machine objects")
@@ -123,14 +121,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileWindowsMachineConfig implements reconcile.Reconciler
+// blank assignment to verify that ReconcileWindowsMachine implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileWindowsMachine{}
 
-// ReconcileWindowsMachineConfig reconciles a Windows Machine object
+// ReconcileWindowsMachine reconciles a Windows Machine object
 type ReconcileWindowsMachine struct {
-	// This client, initialized using mgr.Client() above, is a split client
+	// client is the client initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
+	// scheme is the scheme used to resolve runtime.Objects to resources
 	scheme *runtime.Scheme
 	// k8sclientset holds the kube client that we can re-use for all kube objects other than custom resources.
 	k8sclientset *kubernetes.Clientset
@@ -144,8 +143,7 @@ type ReconcileWindowsMachine struct {
 
 // Reconcile reads that state of the cluster for a Windows Machine object and makes changes based on the state read
 // and what is in the Machine.Spec
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
+// Note: The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileWindowsMachine) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	log.Info("reconciling", "namespace", request.Namespace, "name", request.Name)
@@ -155,7 +153,6 @@ func (r *ReconcileWindowsMachine) Reconcile(request reconcile.Request) (reconcil
 	}
 	// Fetch the Machine instance
 	machine := &mapi.Machine{}
-	provisionedPhase := "Provisioned"
 	if err := r.client.Get(context.TODO(), request.NamespacedName, machine); err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -166,6 +163,8 @@ func (r *ReconcileWindowsMachine) Reconcile(request reconcile.Request) (reconcil
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	// provisionedPhase is the status of the machine when it is in the `Provisioned` state
+	provisionedPhase := "Provisioned"
 	if machine.Status.Phase == nil || *machine.Status.Phase != provisionedPhase {
 		// Phase can be nil and should be ignored by WMCO
 		// If the Machine is not in provisioned state, WMCO shouldn't care about it
@@ -178,7 +177,7 @@ func (r *ReconcileWindowsMachine) Reconcile(request reconcile.Request) (reconcil
 	}
 	ipAddress := ""
 	for _, address := range machine.Status.Addresses {
-		if address.Type == corev1.NodeInternalIP {
+		if address.Type == core.NodeInternalIP {
 			ipAddress = address.Address
 		}
 	}
@@ -200,12 +199,11 @@ func (r *ReconcileWindowsMachine) Reconcile(request reconcile.Request) (reconcil
 
 	// Make the Machine a Windows Worker node
 	if err := r.addWorkerNode(ipAddress, instanceID); err != nil {
-		log.Error(err, "Windows VM failed to be configured", "instanceID", instanceID)
-		r.recorder.Eventf(machine, corev1.EventTypeWarning, "WMCO SetupFailure",
+		r.recorder.Eventf(machine, core.EventTypeWarning, "WMCO SetupFailure",
 			"Machine %s failed to be configured", machine.Name)
 		return reconcile.Result{}, err
 	}
-	r.recorder.Eventf(machine, corev1.EventTypeNormal, "WMCO Setup",
+	r.recorder.Eventf(machine, core.EventTypeNormal, "WMCO Setup",
 		"Machine %s Configured Successfully", machine.Name)
 
 	return reconcile.Result{}, nil
@@ -242,8 +240,8 @@ func (r *ReconcileWindowsMachine) createUserDataSecret() error {
 
 	// sshd service is started to create the default sshd_config file. This file is modified
 	// for enabling publicKey auth and the service is restarted for the changes to take effect.
-	userDataSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
+	userDataSecret := &core.Secret{
+		ObjectMeta: meta.ObjectMeta{
 			Name:      "windows-user-data",
 			Namespace: "openshift-machine-api",
 		},
@@ -277,7 +275,7 @@ func (r *ReconcileWindowsMachine) createUserDataSecret() error {
 
 	// check if the userDataSecret already exists
 	// TODO: Move this as first check, if this exist no need to create the vars unnecessarily
-	err := r.client.Get(context.TODO(), kubeTypes.NamespacedName{Name: userDataSecret.Name, Namespace: userDataSecret.Namespace}, &corev1.Secret{})
+	err := r.client.Get(context.TODO(), kubeTypes.NamespacedName{Name: userDataSecret.Name, Namespace: userDataSecret.Namespace}, &core.Secret{})
 	if err != nil {
 		if k8sapierrors.IsNotFound(err) {
 			log.Info("Creating a new Secret", "Secret.Namespace", userDataSecret.Namespace, "Secret.Name", userDataSecret.Name)

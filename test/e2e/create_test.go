@@ -82,8 +82,8 @@ func (tc *testContext) createWindowsMachineSet(replicas int32, windowsLabel bool
 // waitForWindowsNode waits until there exists nodeCount Windows nodes with the correct set of annotations.
 // if waitForAnnotations = false, the function will return when the node object is first seen and not wait until
 // the expected annotations are present.
-// if expectError = true, the function will wait for duration of 5 minutes for the nodes, else we will wait for the
-// duration given by nodeCreationTime variable.
+// if expectError = true, the function will wait for duration of 5 minutes for the nodes as the error would be thrown
+// immediately, else we will wait for the duration given by nodeCreationTime variable.
 func (tc *testContext) waitForWindowsNodes(nodeCount int32, waitForAnnotations, expectError bool) error {
 	var nodes *v1.NodeList
 	annotations := []string{nodeconfig.HybridOverlaySubnet, nodeconfig.HybridOverlayMac}

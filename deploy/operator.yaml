@@ -40,8 +40,6 @@ spec:
             - name: OPERATOR_NAME
               value: "windows-machine-config-operator"
           volumeMounts:
-          # TODO: Remove the cloud-credentials and cloud-private-key volumeMounts as part of
-          # https://issues.redhat.com/browse/WINC-325
           - name: cloud-private-key
             mountPath: "/etc/private-key/"
             readOnly: true

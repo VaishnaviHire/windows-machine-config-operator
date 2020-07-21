@@ -20,7 +20,7 @@ func testWindowsNodeDeletion(t *testing.T) {
 	require.NoError(t, err)
 
 	// The second item in the slice is the Windows MachineSet we're interested in scaling down.
-	require.Len(t, gc.machineSetNames, 2)
+	require.Len(t, gc.machineSetNames, int(gc.numberOfNodes))
 	windowsMachineSet := &mapi.MachineSet{}
 	err = framework.Global.Client.Get(context.TODO(), types.NamespacedName{Name: gc.machineSetNames[1],
 		Namespace: "openshift-machine-api"}, windowsMachineSet)

@@ -76,7 +76,7 @@ type Windows interface {
 
 // windows implements the Windows interface
 type windows struct {
-	// ipAddress is IP address associated with the Windows VM created
+	// ipAddress is the IP address associated with the Windows VM created
 	ipAddress string
 	// id is the VM's cloud provider ID
 	id string
@@ -97,7 +97,7 @@ func New(ipAddress, instanceID, workerIgnitionEndpoint string, signer ssh.Signer
 
 	// Update the logger name with the VM's cloud ID
 	log = logf.Log.WithName(fmt.Sprintf("VM %s", instanceID))
-	// For now, let's use the `Adminstrator` user for every node
+	// For now, let's use the `Administrator` user for every node
 	conn, err := newSshConnectivity("Administrator", ipAddress, signer)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to setup VM %s sshConnectivity", instanceID)
