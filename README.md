@@ -206,14 +206,19 @@ operator-sdk cleanup packagemanifests --olm-namespace openshift-operator-lifecyc
 *Operator-sdk has a known bug while using `operator-sdk run/cleanup --olm` where it shows failure on success. 
 Track the issue [here](https://github.com/operator-framework/operator-sdk/issues/2938). The error does not imply that the operator will not work.*
 
-### Creating a Windows MachineSet for testing
-Below  is the example of a Windows MachineSet which can create Windows Machines that the WMCO can react upon. Please 
+### Creating a Windows MachineSet
+Below is the example of a Windows MachineSet which can create Windows Machines that the WMCO can react upon. Please 
 note that the `windows-user-data` secret will be created by the WMCO lazily when it is configuring the first Windows 
 Machine. After that, the `windows-user-data` will be available for the subsequent MachineSets to be consumed. It might 
 take around 10 minutes for the Windows VM to be configured so that it joins the cluster. Please note that the MachineSet
 should have `machine.openshift.io/os-id: Windows` label and the image should point to a Windows image with a container
-run-time installed. We can get the `infrastructureID` by looking at the other MachineSets running in the cluster
+run-time installed.
 
+In order to get the `infrastructureID` use:
+```shell script
+ oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster
+```
+##### Example:
 ```
 apiVersion: machine.openshift.io/v1beta1
 kind: MachineSet
