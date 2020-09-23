@@ -66,7 +66,6 @@ hack/run-ci-e2e-test.sh -k "openshift-dev"
 We assume that the developer uses `openshift-dev` as the key pair in the aws cloud.
 
 Additional flags that can be passed to `hack/run-ci-e2e-test.sh` are
-- `-s` to skip the deletion of Windows nodes that are created as part of test suite run
 - `-n` to represent the number of Windows nodes to be created for test run
 - `-k` to represent the AWS specific key pair that will be used during e2e run and it should map to the private key
        that we have in `KUBE_SSH_KEY_PATH`. The default value points to `openshift-dev` which we use in our CI
@@ -77,7 +76,7 @@ Additional flags that can be passed to `hack/run-ci-e2e-test.sh` are
        
 Example command to spin up 2 Windows nodes and retain them after test run:
 ```
-hack/run-ci-e2e-test.sh -s -k "openshift-dev" -n 2      
+hack/run-ci-e2e-test.sh -k "openshift-dev" -n 2      
 ```
 
 ## Bundling the Windows Machine Config Operator

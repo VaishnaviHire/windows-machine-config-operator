@@ -7,7 +7,6 @@ WMCO_ROOT=$(dirname "${BASH_SOURCE}")/..
 source $WMCO_ROOT/hack/common.sh
 
 NODE_COUNT=""
-SKIP_NODE_DELETION=""
 KEY_PAIR_NAME=""
 WMCO_PATH_OPTION=""
 
@@ -36,7 +35,7 @@ OSDK_WMCO_test() {
   fi
 }
 
-while getopts ":n:k:b:s" opt; do
+while getopts ":n:k:b" opt; do
   case ${opt} in
     n ) # process option for the node count
       NODE_COUNT=$OPTARG
@@ -44,14 +43,11 @@ while getopts ":n:k:b:s" opt; do
     k ) # process option for the keypair to be used by AWS cloud provider
       KEY_PAIR_NAME=$OPTARG
       ;;
-    s ) # process option for skipping deleting Windows VMs created by test suite
-      SKIP_NODE_DELETION="-skip-node-deletion"
-      ;;
     b ) # path to the WMCO binary, used for version validation
       WMCO_PATH_OPTION="-wmco-path=$OPTARG"
       ;;
     \? )
-      echo "Usage: $0 [-n] [-k] [-s] [-b]"
+      echo "Usage: $0 [-n] [-k] [-b]"
       exit 0
       ;;
   esac
@@ -71,7 +67,6 @@ OSDK=$(get_operator_sdk)
 # specified in main_test.go has literally no effect. Not sure, if this is because of
 # the way operator-sdk testing is done using `go test []string{}
 NODE_COUNT=${NODE_COUNT:-2}
-SKIP_NODE_DELETION=${SKIP_NODE_DELETION:-"-skip-node-deletion=false"}
 KEY_PAIR_NAME=${KEY_PAIR_NAME:-"openshift-dev"}
 
 # If ARTIFACT_DIR is not set, create a temp directory for artifacts
@@ -103,10 +98,10 @@ fi
 # -flag x is allowed for non-boolean flags only(https://golang.org/pkg/flag/)
 
 # Test that the operator is running when the private key secret is not present
-OSDK_WMCO_test $OSDK "-run=TestWMCO/operator_deployed_without_private_key_secret -v -node-count=$NODE_COUNT -skip-node-deletion -ssh-key-pair=$KEY_PAIR_NAME --private-key-path=$KUBE_SSH_KEY_PATH $WMCO_PATH_OPTION"
+OSDK_WMCO_test $OSDK "-run=TestWMCO/operator_deployed_without_private_key_secret -v -node-count=$NODE_COUNT -ssh-key-pair=$KEY_PAIR_NAME --private-key-path=$KUBE_SSH_KEY_PATH $WMCO_PATH_OPTION"
 
-# Run the creation tests and skip deletion of the Windows VMs
-OSDK_WMCO_test $OSDK "-run=TestWMCO/create -v -timeout=90m -node-count=$NODE_COUNT -skip-node-deletion -ssh-key-pair=$KEY_PAIR_NAME --private-key-path=$KUBE_SSH_KEY_PATH $WMCO_PATH_OPTION"
+# Run the creation tests of the Windows VMs
+OSDK_WMCO_test $OSDK "-run=TestWMCO/create -v -timeout=90m -node-count=$NODE_COUNT -ssh-key-pair=$KEY_PAIR_NAME --private-key-path=$KUBE_SSH_KEY_PATH $WMCO_PATH_OPTION"
 
 # Run the deletion tests while testing operator restart functionality. This will clean up VMs created
 # in the previous step
